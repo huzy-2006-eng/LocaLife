@@ -45,6 +45,7 @@ function App() {
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [conciergeOpen, setConciergeOpen] = useState(false);
+  const [conciergeBusy, setConciergeBusy] = useState(false);
   const [conciergeQuery, setConciergeQuery] = useState('');
   const [conciergeFilters, setConciergeFilters] = useState<ConciergeFilters | null>(null);
   const [conciergeResults, setConciergeResults] = useState<ScoredExperience[] | null>(null);
@@ -115,7 +116,8 @@ function App() {
   }
 
   async function runConcierge() {
-    const filters = parseConciergeQuery(conciergeQuery);
+    setConciergeBusy(true);
+    const filters = await parseConciergeQuery(conciergeQuery);
     setConciergeFilters(filters);
     const { data } = await supabase.rpc('get_recommendations', {
       p_user_id: session?.user.id ?? null,
@@ -125,6 +127,7 @@ function App() {
       p_limit: 50,
     });
     setConciergeResults((data ?? []) as ScoredExperience[]);
+    setConciergeBusy(false);
     setConciergeOpen(false);
     setHasSearched(true);
     setActiveInterest('All for you');
@@ -360,7 +363,9 @@ function App() {
             <h2>What kind of day<br /><em>are you dreaming of?</em></h2>
             <p>Ask for anything — we'll keep it personal, nearby, and easy to love.</p>
             <textarea value={conciergeQuery} onChange={(event) => setConciergeQuery(event.target.value)} placeholder="Something fun after work, not too expensive..." autoFocus />
-            <button className="modal-submit" onClick={runConcierge} disabled={!conciergeQuery.trim()}>Find my day <ArrowRight size={17} /></button>
+            <button className="modal-submit" onClick={runConcierge} disabled={!conciergeQuery.trim() || conciergeBusy}>
+              {conciergeBusy ? 'Thinking...' : 'Find my day'} <ArrowRight size={17} />
+            </button>
             <div className="modal-prompts"><span>Try asking</span><button onClick={() => setConciergeQuery('Something cheap and fun tonight near me')}>cheap and fun tonight</button><button onClick={() => setConciergeQuery('A quiet creative workshop this afternoon')}>quiet creative workshop</button></div>
           </div>
         </div>

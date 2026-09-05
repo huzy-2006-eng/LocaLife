@@ -20,9 +20,13 @@ gives small local hosts a real way to reach them.
 - **Local Impact Meter**: shown on every experience detail page, modeling
   how much of the traveler's spend reaches the host directly vs. a typical
   OTA (assumptions stated inline in [src/components/LocalImpactMeter.tsx](src/components/LocalImpactMeter.tsx)).
-- **AI Concierge**: free-text query → structured `{tags, budget_max, time_window}`
-  filters → fed into the same scoring function. See Limitations below for how
-  the parsing is implemented today.
+- **AI Concierge**: free-text query → an LLM call (Groq, see
+  [src/lib/concierge.ts](src/lib/concierge.ts)) extracts structured
+  `{tags, budget_max, time_window, mood}` filters → fed into the same
+  scoring function, which does the actual ranking. The LLM never sees or
+  reorders results, only parses intent — exactly the split the brief
+  specifies (§5, Step 2). Falls back to a local keyword parser if no Groq
+  key is set or the API call fails, so the concierge never just breaks.
 
 ## Stack
 
@@ -50,7 +54,10 @@ and one `rpc()` call for scoring.
    cp .env.example .env
    ```
    Fill in `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` from
-   Project Settings → API.
+   Project Settings → API. Optionally add `VITE_GROQ_API_KEY` (free key
+   from [console.groq.com](https://console.groq.com)) to power the real AI
+   Concierge — without it, the concierge still works via a local keyword
+   parser.
 6. **Run it**
    ```bash
    npm run dev
@@ -68,13 +75,12 @@ and one `rpc()` call for scoring.
 
 ## Limitations (stated high, per the brief)
 
-- **AI Concierge parsing is rule-based, not an LLM call.** The brief specs
-  an LLM for query→filter extraction. To avoid requiring a second API key
-  and external account just to run the demo, `src/lib/concierge.ts` uses
-  keyword/regex heuristics with the exact same input/output contract
-  (`{tags, budget_max, time_window, mood}`). Swapping in a real LLM call
-  (Gemini/Groq, structured-output prompt) only requires changing the body of
-  `parseConciergeQuery` — no other file depends on how it's implemented.
+- **AI Concierge calls Groq directly from the browser** with the API key in
+  a client-side env var (`VITE_GROQ_API_KEY`), rather than proxying through
+  a server/edge function. That means the key is technically extractable
+  from the built app. Acceptable for a free-tier hackathon key with no
+  billing risk; a production version would move this call behind a
+  Supabase Edge Function so the key never reaches the client.
 - **Micro-Itinerary Bundling, Swipe Discovery Mode, and the Hindi toggle**
   from the brief's differentiator list were not built — the brief explicitly
   says to pick 3–4 of 6, not all six. Hidden Gem Score, AI Concierge, and
