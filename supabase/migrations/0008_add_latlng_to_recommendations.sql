@@ -1,18 +1,13 @@
--- Recommendation scoring — deterministic, explainable, no LLM in the ranking
--- path (see PS6 brief §5). The LLM (client-side heuristic today, swappable
--- for a real API later — see src/lib/concierge.ts) only ever produces the
--- {tags, budget_max, time_window} filter object fed into this function.
+-- Bug fix: get_recommendations() computed proximity internally using
+-- experiences.lat/lng but never exposed those columns in its return type.
+-- The client-side Micro-Itinerary bundler (src/lib/itinerary.ts) needs real
+-- coordinates to check whether two experiences are close enough to bundle
+-- into one day -- without this, every ScoredExperience.lat/lng was
+-- `undefined`, haversine distance came out NaN, and `NaN > threshold` is
+-- always false, so the "nearby" filter silently never filtered anything
+-- (confirmed live: a plan mixed a Mumbai listing with an Ahmedabad one).
 
-create or replace function haversine_km(lat1 double precision, lng1 double precision, lat2 double precision, lng2 double precision)
-returns double precision
-language sql
-immutable
-as $$
-  select 2 * 6371 * asin(sqrt(
-    sin(radians(lat2 - lat1) / 2) ^ 2 +
-    cos(radians(lat1)) * cos(radians(lat2)) * sin(radians(lng2 - lng1) / 2) ^ 2
-  ));
-$$;
+drop function if exists get_recommendations(uuid, text[], numeric, text, integer);
 
 create or replace function get_recommendations(
   p_user_id uuid default null,
@@ -113,4 +108,3 @@ end;
 $$;
 
 grant execute on function get_recommendations to anon, authenticated;
-grant execute on function haversine_km to anon, authenticated;

@@ -21,6 +21,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useRecommendations, logInteraction } from '@/hooks/useRecommendations';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { isConciergeLLMConfigured, parseConciergeQuery } from '@/lib/concierge';
+import { buildItinerary, formatStopTime, totalItineraryHours, type ItineraryStop } from '@/lib/itinerary';
 import { reasonSentence } from '@/lib/reasons';
 import { CITIES, INTEREST_TAGS, cityOf, type ConciergeFilters, type Role, type ScoredExperience } from '@/types';
 import { Onboarding } from '@/components/Onboarding';
@@ -38,7 +39,12 @@ const TABS = ['All for you', ...INTEREST_TAGS];
 // and re-ranks (a listing outside your budget just scores lower, it isn't
 // removed) — so this deliberately doesn't claim a "match count", which
 // would misleadingly stay constant across refinements.
-function summarizeFilters(filters: ConciergeFilters): string {
+function summarizeTurn(filters: ConciergeFilters, itineraryStopCount?: number): string {
+  if (filters.wants_itinerary) {
+    if (!itineraryStopCount) return "Couldn't fit a plan into that time budget — try loosening it.";
+    const hours = filters.available_hours ? `~${filters.available_hours}h` : 'your day';
+    return `Built a ${itineraryStopCount}-stop plan for ${hours}${filters.time_window ? ` ${filters.time_window}` : ''}.`;
+  }
   const parts: string[] = [];
   if (filters.tags.length) parts.push(filters.tags.join(', '));
   if (filters.time_window) parts.push(filters.time_window);
@@ -63,7 +69,8 @@ function App() {
   const [conciergeFilters, setConciergeFilters] = useState<ConciergeFilters | null>(null);
   const [conciergeResults, setConciergeResults] = useState<ScoredExperience[] | null>(null);
   const [conciergeHistory, setConciergeHistory] = useState<string[]>([]);
-  const [conciergeTurns, setConciergeTurns] = useState<{ query: string; filters: ConciergeFilters }[]>([]);
+  const [conciergeTurns, setConciergeTurns] = useState<{ query: string; filters: ConciergeFilters; itineraryStopCount?: number }[]>([]);
+  const [itinerary, setItinerary] = useState<ItineraryStop[] | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [loginInitialRole, setLoginInitialRole] = useState<Role>('traveler');
   const [notifOpen, setNotifOpen] = useState(false);
@@ -147,7 +154,19 @@ function App() {
     });
     const results = (data ?? []) as ScoredExperience[];
     setConciergeResults(results);
-    setConciergeTurns((prev) => [...prev, { query: message, filters }]);
+
+    // Bundle within whichever city the traveler is currently browsing (the
+    // same city the visible grid is filtered to) rather than the globally
+    // top-scored experience regardless of city — otherwise the anchor could
+    // land anywhere and, since nothing else would be geographically close
+    // enough to join it, silently produce a 1-stop "plan" in the wrong city.
+    const itineraryCandidates = selectedCity === 'All cities'
+      ? results
+      : results.filter((e) => cityOf(e.location_name) === selectedCity);
+    const stops = filters.wants_itinerary ? buildItinerary(itineraryCandidates, filters.available_hours, filters.time_window) : null;
+    setItinerary(stops);
+
+    setConciergeTurns((prev) => [...prev, { query: message, filters, itineraryStopCount: stops?.length }]);
     setConciergeBusy(false);
     setConciergeQuery('');
     setHasSearched(true);
@@ -161,6 +180,7 @@ function App() {
     setConciergeFilters(null);
     setConciergeHistory([]);
     setConciergeTurns([]);
+    setItinerary(null);
     setHasSearched(false);
   }
 
@@ -341,6 +361,36 @@ function App() {
             )}
           </section>
 
+          {itinerary && itinerary.length > 0 && (
+            <section className="itinerary-section" id="itinerary">
+              <div className="section-heading">
+                <div>
+                  <div className="eyebrow compact"><span className="eyebrow-line" />YOUR PLAN</div>
+                  <h2>A day <em>mapped out</em> for you.</h2>
+                </div>
+                <span className="itinerary-total">~{totalItineraryHours(itinerary).toFixed(1)}h total, {itinerary.length} stops</span>
+              </div>
+              <div className="itinerary-timeline">
+                {itinerary.map((stop, i) => (
+                  <div className="itinerary-stop" key={stop.experience.id}>
+                    <div className="itinerary-stop-time">
+                      <span>{formatStopTime(stop.startHour, conciergeFilters?.time_window ?? null)}</span>
+                      {i < itinerary.length - 1 && <div className="itinerary-connector" />}
+                    </div>
+                    <button className="itinerary-stop-card" onClick={() => openExperience(stop.experience)} type="button">
+                      <img src={stop.experience.image_url} alt={stop.experience.title} />
+                      <div>
+                        <strong>{stop.experience.title}</strong>
+                        <span><MapPin size={12} /> {stop.experience.location_name}</span>
+                        <span>{stop.experience.duration_label} · ₹{stop.experience.price}/person</span>
+                      </div>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="discover-section" id="discover">
             <div className="section-heading"><div><div className="eyebrow compact"><span className="eyebrow-line" />DISCOVER NEARBY</div><h2>Made for <em>your kind</em> of curious.</h2></div><button className="text-button" onClick={() => { setActiveInterest('All for you'); setQuery(''); }}>See all experiences <ArrowRight size={16} /></button></div>
             <div className="interest-tabs" role="tablist">{TABS.map((interest) => <button key={interest} className={activeInterest === interest ? 'selected' : ''} onClick={() => setActiveInterest(interest)} role="tab" aria-selected={activeInterest === interest}>{interest}{interest === 'All for you' && <Sparkles size={14} />}</button>)}</div>
@@ -410,7 +460,7 @@ function App() {
                 {conciergeTurns.map((turn, i) => (
                   <div className="concierge-turn" key={i}>
                     <div className="concierge-turn-user">{turn.query}</div>
-                    <div className="concierge-turn-ai"><Sparkles size={12} /> {summarizeFilters(turn.filters)}</div>
+                    <div className="concierge-turn-ai"><Sparkles size={12} /> {summarizeTurn(turn.filters, turn.itineraryStopCount)}</div>
                   </div>
                 ))}
               </div>

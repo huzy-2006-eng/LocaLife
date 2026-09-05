@@ -2,13 +2,14 @@ import { INTEREST_TAGS, type ConciergeFilters, type TimeWindow } from '@/types';
 
 // Turns a free-text conversation ("under 1000, this evening, something
 // creative" -> "actually make it cheaper") into the structured
-// {tags, budget_max, time_window} filter object that get_recommendations()
-// consumes — PS6 brief §5, Step 2. The LLM here only ever produces this
-// filter object; it never sees or reorders the actual results, so the
-// ranking stays deterministic and explainable regardless of what the model
-// returns. If no Groq key is configured, or the call fails for any reason
-// (network, rate limit, malformed response), this falls back to a local
-// keyword parser so the concierge never just breaks.
+// {tags, budget_max, time_window, wants_itinerary, available_hours} filter
+// object that get_recommendations() (and, for itinerary requests,
+// buildItinerary()) consume — PS6 brief §5, Step 2. The LLM here only ever
+// produces this filter object; it never sees or reorders the actual
+// results, so the ranking stays deterministic and explainable regardless of
+// what the model returns. If no Groq key is configured, or the call fails
+// for any reason (network, rate limit, malformed response), this falls back
+// to a local keyword parser so the concierge never just breaks.
 //
 // `history` is every message the traveler has sent in this conversation so
 // far, oldest first, including the newest one. Later messages refine or
@@ -32,13 +33,15 @@ export async function parseConciergeQuery(history: string[]): Promise<ConciergeF
 
 async function parseWithGroq(history: string[], apiKey: string): Promise<ConciergeFilters | null> {
   const systemPrompt = `You extract structured search filters from a traveler's ongoing conversation with a local-experiences app's concierge. Respond with ONLY a JSON object, no other text, matching exactly this shape:
-{"tags": string[], "budget_max": number | null, "time_window": "morning" | "afternoon" | "evening" | "night" | null, "mood": string}
+{"tags": string[], "budget_max": number | null, "time_window": "morning" | "afternoon" | "evening" | "night" | null, "mood": string, "wants_itinerary": boolean, "available_hours": number | null}
 
 Rules:
 - "tags" must only contain values from this exact list: ${INTEREST_TAGS.join(', ')}. Include every tag that plausibly matches the request. Empty array if none clearly apply.
 - "budget_max" is the highest price (in rupees) the traveler mentioned, or null if no budget was stated.
 - "time_window" must be exactly one of "morning", "afternoon", "evening", "night", or null if unstated — never any other word. Map "tonight"/"late" to "night". Infer it from context even if not explicitly a filter (e.g. "a romantic evening" implies "evening").
 - "mood" is a short (2-4 word) description of the vibe they're after, e.g. "quiet and relaxed" or "cheap and fun".
+- "wants_itinerary" is true only if the traveler is asking for a PLAN combining multiple experiences into one day (e.g. "plan my day", "what should I do this afternoon", "I have 4 hours free", "build me an itinerary"). It is false for a request for a single recommendation.
+- "available_hours" is how many hours they have free, only when wants_itinerary is true — parse it from what they said (e.g. "4 hours this afternoon" -> 4, "the whole day" -> 8, "a couple hours" -> 2). Null if wants_itinerary is false or no duration was stated or implied.
 - The conversation may have multiple messages. Later messages refine or override earlier ones rather than replacing the whole request — e.g. if message 1 said "under 1000" and message 2 says "actually make it fancier, up to 2000", the current budget_max is 2000, but tags/mood from message 1 still apply unless message 2 contradicts them. Return the CURRENT combined understanding of the whole conversation, not just the latest message in isolation.`;
 
   const conversationText = history.map((msg, i) => `${i + 1}. "${msg}"`).join('\n');
@@ -61,7 +64,7 @@ Rules:
       // small, while still reasoning enough to catch implied context.
       reasoning_effort: 'low',
       temperature: 0.2,
-      max_tokens: 350,
+      max_tokens: 400,
     }),
   });
 
@@ -81,8 +84,10 @@ Rules:
   const normalizedWindow = rawWindow ? (windowAliases[rawWindow] ?? rawWindow) : null;
   const time_window = validWindows.includes(normalizedWindow as TimeWindow) ? (normalizedWindow as TimeWindow) : null;
   const mood = typeof parsed.mood === 'string' && parsed.mood.trim() ? parsed.mood.trim() : 'open to anything';
+  const wants_itinerary = parsed.wants_itinerary === true;
+  const available_hours = wants_itinerary && typeof parsed.available_hours === 'number' ? parsed.available_hours : null;
 
-  return { tags, budget_max, time_window, mood };
+  return { tags, budget_max, time_window, mood, wants_itinerary, available_hours };
 }
 
 function parseSingleHeuristic(query: string): ConciergeFilters {
@@ -114,17 +119,28 @@ function parseSingleHeuristic(query: string): ConciergeFilters {
   const moodWords = text.match(/quiet|relax|chill|adventure|creative|romantic|social|cheap|fun|authentic/g);
   const mood = moodWords ? Array.from(new Set(moodWords)).join(', ') : 'open to anything';
 
-  return { tags, budget_max, time_window, mood };
+  const wants_itinerary = /plan (my|the|a) day|itinerary|what should i do|full day|whole day|build me a plan|schedule my/.test(text);
+  const hoursMatch = text.match(/(\d+(?:\.\d+)?)\s*(?:hours|hrs|hour)/);
+  const wholeDayMatch = /whole day|full day|all day/.test(text);
+  const available_hours = wants_itinerary
+    ? (hoursMatch ? Number(hoursMatch[1]) : wholeDayMatch ? 8 : null)
+    : null;
+
+  return { tags, budget_max, time_window, mood, wants_itinerary, available_hours };
 }
 
 // Fallback path merges each turn in order so a later message's budget/time
 // override earlier ones, and tags/moods accumulate — a rough approximation
 // of the same "refine, don't replace" behavior the LLM prompt asks for.
+// wants_itinerary is sticky (true once any turn asked for a plan) and
+// available_hours takes the latest explicitly stated value.
 function parseWithHeuristics(history: string[]): ConciergeFilters {
   let tags: string[] = [];
   let budget_max: number | null = null;
   let time_window: TimeWindow | null = null;
   const moods: string[] = [];
+  let wants_itinerary = false;
+  let available_hours: number | null = null;
 
   for (const query of history) {
     const single = parseSingleHeuristic(query);
@@ -132,7 +148,16 @@ function parseWithHeuristics(history: string[]): ConciergeFilters {
     if (single.budget_max !== null) budget_max = single.budget_max;
     if (single.time_window !== null) time_window = single.time_window;
     if (single.mood !== 'open to anything') moods.push(...single.mood.split(', '));
+    if (single.wants_itinerary) wants_itinerary = true;
+    if (single.available_hours !== null) available_hours = single.available_hours;
   }
 
-  return { tags, budget_max, time_window, mood: moods.length ? Array.from(new Set(moods)).join(', ') : 'open to anything' };
+  return {
+    tags,
+    budget_max,
+    time_window,
+    mood: moods.length ? Array.from(new Set(moods)).join(', ') : 'open to anything',
+    wants_itinerary,
+    available_hours,
+  };
 }

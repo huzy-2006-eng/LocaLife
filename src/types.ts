@@ -83,6 +83,13 @@ export type ConciergeFilters = {
   budget_max: number | null;
   time_window: TimeWindow | null;
   mood: string;
+  // Micro-Itinerary Bundling (PS6 brief §4): set when the traveler asked
+  // for a plan rather than a single pick, e.g. "I have 4 hours this
+  // afternoon, what should I do?". available_hours is the stated time
+  // budget, defaulted at build time if the request implied a plan but
+  // gave no explicit duration.
+  wants_itinerary: boolean;
+  available_hours: number | null;
 };
 
 // Matches the trailing ", <City>" segment of experiences.location_name.
