@@ -1,5 +1,7 @@
 # LocaLife — PS6 Local & Experiences
 
+Live demo: https://loca-life.vercel.app
+
 HackCelestial 3.0, PS6: an intelligent local-discovery platform that connects
 travelers with authentic local experiences (beyond the tourist-trap feed) and
 gives small local hosts a real way to reach them.
