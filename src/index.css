@@ -211,9 +211,13 @@ footer { max-width: 1240px; margin: 0 auto; border-top: 1px solid #e3e8e1; paddi
 .listing-textarea { height: 80px; resize: vertical; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-grid-2 label, .auth-form > label { display: flex; flex-direction: column; gap: 6px; font-size: 10px; color: #99aaa5; font-family: 'DM Mono', monospace; letter-spacing: .5px; }
-.image-preview { height: 140px; background: #f4f8f2; border: 1px solid #e5e9e3; display: grid; place-items: center; overflow: hidden; }
+.image-preview { height: 140px; background: #f4f8f2; overflow: hidden; }
 .image-preview img { width: 100%; height: 100%; object-fit: cover; }
-.image-preview span { color: #c0472b; font-size: 11px; padding: 0 16px; text-align: center; }
+.file-input-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none; }
+.image-picker { display: block; width: 100%; padding: 0; border: 1px dashed #cadbd3; background: #fff; }
+.image-picker:hover { border-color: #e28d4c; }
+.image-picker-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 16px; color: #78908a; font-size: 12px; }
+.image-picker-empty svg { color: #d9803f; }
 
 .dropdown-anchor { position: relative; }
 .dropdown-backdrop { position: fixed; inset: 0; z-index: 1; background: transparent; }
