@@ -119,6 +119,8 @@ function NewListingForm({ onClose, onCreated, hostId }: { onClose: () => void; o
   const [locationName, setLocationName] = useState('');
   const [timeSlots, setTimeSlots] = useState<string[]>([]);
   const [duration, setDuration] = useState('2 hours');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageError, setImageError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -141,6 +143,7 @@ function NewListingForm({ onClose, onCreated, hostId }: { onClose: () => void; o
       lng: AHMEDABAD.lng + (Math.random() - 0.5) * 0.08,
       time_slots: timeSlots,
       duration_label: duration,
+      image_url: imageUrl.trim(),
     });
     setBusy(false);
     if (insertError) {
@@ -151,7 +154,7 @@ function NewListingForm({ onClose, onCreated, hostId }: { onClose: () => void; o
     onClose();
   }
 
-  const valid = title && description && locationName && tags.length && timeSlots.length;
+  const valid = title && description && locationName && tags.length && timeSlots.length && imageUrl.trim() && !imageError;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -164,6 +167,23 @@ function NewListingForm({ onClose, onCreated, hostId }: { onClose: () => void; o
           <input className="text-input" placeholder="Title, e.g. Clay, chai & conversation" value={title} onChange={(e) => setTitle(e.target.value)} />
           <textarea className="text-input listing-textarea" placeholder="Describe the experience..." value={description} onChange={(e) => setDescription(e.target.value)} />
           <input className="text-input" placeholder="Neighborhood, e.g. Gota, Ahmedabad" value={locationName} onChange={(e) => setLocationName(e.target.value)} />
+
+          <label className="onboarding-label">Photo URL</label>
+          <input
+            className="text-input"
+            placeholder="https://... a link to a real photo of this experience"
+            value={imageUrl}
+            onChange={(e) => { setImageUrl(e.target.value); setImageError(false); }}
+          />
+          {imageUrl.trim() && (
+            <div className="image-preview">
+              {imageError ? (
+                <span>Couldn't load that image — check the link.</span>
+              ) : (
+                <img src={imageUrl.trim()} alt="Preview" onError={() => setImageError(true)} onLoad={() => setImageError(false)} />
+              )}
+            </div>
+          )}
 
           <label className="onboarding-label">Tags</label>
           <div className="tag-picker">
