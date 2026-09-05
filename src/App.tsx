@@ -374,7 +374,7 @@ function App() {
                 {itinerary.map((stop, i) => (
                   <div className="itinerary-stop" key={stop.experience.id}>
                     <div className="itinerary-stop-time">
-                      <span>{formatStopTime(stop.startHour, conciergeFilters?.time_window ?? null)}</span>
+                      <span>{formatStopTime(stop.startHour)}</span>
                       {i < itinerary.length - 1 && <div className="itinerary-connector" />}
                     </div>
                     <button className="itinerary-stop-card" onClick={() => openExperience(stop.experience)} type="button">
