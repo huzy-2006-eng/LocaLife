@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
@@ -27,7 +27,7 @@ import { NotificationsMenu } from '@/components/NotificationsMenu';
 import { ProfileMenu } from '@/components/ProfileMenu';
 import { LoginPage } from '@/components/LoginPage';
 
-type View = 'home' | 'saved' | 'host' | 'login';
+type View = 'home' | 'saved' | 'host';
 
 const TABS = ['All for you', ...INTEREST_TAGS];
 
@@ -46,11 +46,18 @@ function App() {
   const [conciergeResults, setConciergeResults] = useState<ScoredExperience[] | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [loginInitialRole, setLoginInitialRole] = useState<Role>('traveler');
+  const [guestBrowsing, setGuestBrowsing] = useState(false);
+  const [hasRoutedInitially, setHasRoutedInitially] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [editPreferencesOpen, setEditPreferencesOpen] = useState(false);
   const [selectedCity, setSelectedCity] = useState('Ahmedabad');
   const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
+
+  function requireAuth(role: Role = 'traveler') {
+    setLoginInitialRole(role);
+    setGuestBrowsing(false);
+  }
 
   const { experiences, loading: experiencesLoading, refetch } = useRecommendations(session?.user.id);
 
@@ -67,10 +74,26 @@ function App() {
   }, [session]);
 
   useEffect(() => {
-    if (view === 'login' && session && profile) {
+    if (!hasRoutedInitially && session && profile) {
       setView(profile.role === 'host' ? 'host' : 'home');
+      setHasRoutedInitially(true);
     }
-  }, [view, session, profile]);
+  }, [session, profile, hasRoutedInitially]);
+
+  // Reset routing state on the actual session -> null transition (not on
+  // the sign-out button click, since signOut() resolves asynchronously —
+  // reacting to the real state change avoids a race where this reset runs
+  // before the old session/profile have actually cleared, which left the
+  // next login's routing effect skipped and stuck on the previous view.
+  const hadSessionRef = useRef(false);
+  useEffect(() => {
+    if (hadSessionRef.current && !session) {
+      setHasRoutedInitially(false);
+      setGuestBrowsing(false);
+      setView('home');
+    }
+    hadSessionRef.current = !!session;
+  }, [session]);
 
   const baseList = conciergeResults ?? experiences;
 
@@ -86,8 +109,7 @@ function App() {
 
   async function toggleSaved(experience: ScoredExperience) {
     if (!session) {
-      setLoginInitialRole('traveler');
-      setView('login');
+      requireAuth('traveler');
       return;
     }
     const isSaved = savedIds.has(experience.id);
@@ -150,10 +172,10 @@ function App() {
     );
   }
 
-  if (view === 'login' && !session) {
+  if (!session && !guestBrowsing) {
     return (
       <div className="app-shell">
-        <LoginPage onBack={() => setView('home')} initialRole={loginInitialRole} />
+        <LoginPage onBack={() => setGuestBrowsing(true)} initialRole={loginInitialRole} />
       </div>
     );
   }
@@ -206,12 +228,12 @@ function App() {
               {profileMenuOpen && (
                 <ProfileMenu
                   onEditPreferences={() => { setEditPreferencesOpen(true); setProfileMenuOpen(false); }}
-                  onClose={() => { setProfileMenuOpen(false); setView('home'); }}
+                  onClose={() => setProfileMenuOpen(false)}
                 />
               )}
             </div>
           ) : (
-            <button className="sign-in-button" onClick={() => { setLoginInitialRole('traveler'); setView('login'); }}>Sign in</button>
+            <button className="sign-in-button" onClick={() => requireAuth('traveler')}>Sign in</button>
           )}
           <button className="mobile-menu" onClick={() => setMenuOpen((open) => !open)} aria-label="Open menu">
             {menuOpen ? <X size={21} /> : <Menu size={21} />}
@@ -294,7 +316,7 @@ function App() {
             ) : (
               <>
                 <div className="personal-intro"><span className="personal-avatar"><Sparkles size={16} /></span><div><strong>Browsing as a guest</strong><span>Sign in to personalize your feed</span></div></div>
-                <button className="edit-preferences" onClick={() => { setLoginInitialRole('traveler'); setView('login'); }}>Sign in <ArrowRight size={15} /></button>
+                <button className="edit-preferences" onClick={() => requireAuth('traveler')}>Sign in <ArrowRight size={15} /></button>
               </>
             )}
           </section>
@@ -328,7 +350,7 @@ function App() {
           </section>
 
           {profile?.role !== 'host' && (
-            <section className="host-banner" id="become-a-host"><div><div className="eyebrow compact light"><span className="eyebrow-line" />FOR THE LOCALS</div><h2>You know the city<br /><em>better than anyone.</em></h2><p>Share your corner of it. Meet curious travelers. Make a little extra doing what you already love.</p></div><button className="light-button" onClick={() => { setLoginInitialRole('host'); setView('login'); }}>Become a host <ArrowRight size={16} /></button><div className="host-shape" /></section>
+            <section className="host-banner" id="become-a-host"><div><div className="eyebrow compact light"><span className="eyebrow-line" />FOR THE LOCALS</div><h2>You know the city<br /><em>better than anyone.</em></h2><p>Share your corner of it. Meet curious travelers. Make a little extra doing what you already love.</p></div><button className="light-button" onClick={() => requireAuth('host')}>Become a host <ArrowRight size={16} /></button><div className="host-shape" /></section>
           )}
         </main>
       )}
@@ -357,7 +379,7 @@ function App() {
           onToggleSave={() => toggleSaved(selectedExperience)}
           onClose={() => setSelectedExperience(null)}
           onBook={async () => {
-            if (!session) { setLoginInitialRole('traveler'); setView('login'); return; }
+            if (!session) { requireAuth('traveler'); return; }
             await logInteraction(session.user.id, selectedExperience.id, 'interest');
           }}
           travelerTags={travelerProfile?.interest_tags ?? conciergeFilters?.tags ?? []}
