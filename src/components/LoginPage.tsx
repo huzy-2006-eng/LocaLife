@@ -51,12 +51,12 @@ export function LoginPage({ onBack, initialRole = 'traveler' }: { onBack: () => 
     <div className="login-page">
       <div className="login-marketing">
         <button className="login-back" onClick={onBack} type="button"><ArrowLeft size={15} /> Continue browsing</button>
-        <a className="brand login-brand" href="#top"><span className="brand-mark light"><Compass size={19} strokeWidth={2.3} /></span><span>local<span className="brand-dot">.</span></span></a>
+        <a className="brand login-brand" href="#top"><span className="brand-mark light"><Compass size={19} strokeWidth={2.3} /></span><span>Loca<span className="brand-dot">Life</span></span></a>
 
-        <div className="eyebrow light"><span className="eyebrow-line" />WHY LOCAL.</div>
+        <div className="eyebrow light"><span className="eyebrow-line" />WHY LOCALIFE</div>
         <h1 className="login-headline">Real places.<br />Real hosts.<br /><em>No tourist traps.</em></h1>
         <p className="login-subcopy">
-          local. connects curious travelers with authentic experiences run by real people —
+          LocaLife connects curious travelers with authentic experiences run by real people —
           and puts your money directly in their hands, not a booking platform's cut.
         </p>
 
@@ -72,7 +72,7 @@ export function LoginPage({ onBack, initialRole = 'traveler' }: { onBack: () => 
           ))}
         </div>
 
-        <div className="login-stat"><ShieldCheck size={16} /> 88% of what you spend on local. goes straight to your host</div>
+        <div className="login-stat"><ShieldCheck size={16} /> 88% of what you spend on LocaLife goes straight to your host</div>
       </div>
 
       <div className="login-form-panel">
@@ -86,7 +86,7 @@ export function LoginPage({ onBack, initialRole = 'traveler' }: { onBack: () => 
             </button>
           </div>
 
-          <div className="eyebrow compact"><span className="eyebrow-line" />{mode === 'signup' ? 'JOIN LOCAL.' : 'WELCOME BACK'}</div>
+          <div className="eyebrow compact"><span className="eyebrow-line" />{mode === 'signup' ? 'JOIN LOCALIFE' : 'WELCOME BACK'}</div>
           <h2>{mode === 'signup' ? <>Find your kind<br /><em>of curious.</em></> : <>Good to see<br /><em>you again.</em></>}</h2>
 
           <div className="auth-form">

@@ -1,4 +1,4 @@
-# local. — PS6 Local & Experiences
+# LocaLife — PS6 Local & Experiences
 
 HackCelestial 3.0, PS6: an intelligent local-discovery platform that connects
 travelers with authentic local experiences (beyond the tourist-trap feed) and

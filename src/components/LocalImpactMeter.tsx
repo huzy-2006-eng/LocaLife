@@ -17,7 +17,7 @@ export function LocalImpactMeter({ price }: { price: number }) {
     <div className="impact-meter">
       <div className="impact-meter-title"><Heart size={14} /> Local Impact Meter</div>
       <div className="impact-row">
-        <span>On local.</span>
+        <span>On LocaLife</span>
         <div className="impact-bar"><div className="impact-fill local" style={{ width: `${localShare}%` }} /></div>
         <strong>₹{localAmount} ({localShare}%)</strong>
       </div>
@@ -26,7 +26,7 @@ export function LocalImpactMeter({ price }: { price: number }) {
         <div className="impact-bar"><div className="impact-fill ota" style={{ width: `${otaShare}%` }} /></div>
         <strong>₹{otaAmount} ({otaShare}%)</strong>
       </div>
-      <p className="impact-note">Modeled from a 12% local.com service fee vs. a ~25% typical OTA commission on local experiences.</p>
+      <p className="impact-note">Modeled from a 12% LocaLife service fee vs. a ~25% typical OTA commission on local experiences.</p>
     </div>
   );
 }

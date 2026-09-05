@@ -171,7 +171,7 @@ function App() {
       <header className="topbar">
         <a className="brand" href="#top" aria-label="Local home">
           <span className="brand-mark"><Compass size={19} strokeWidth={2.3} /></span>
-          <span>local<span className="brand-dot">.</span></span>
+          <span>Loca<span className="brand-dot">Life</span></span>
         </a>
         <nav className={`main-nav ${menuOpen ? 'is-open' : ''}`}>
           <button className={view === 'home' ? 'active' : ''} onClick={() => setView('home')}>Discover</button>
@@ -338,7 +338,7 @@ function App() {
         </main>
       )}
 
-      <footer><div className="brand footer-brand"><span className="brand-mark"><Compass size={17} /></span><span>local<span className="brand-dot">.</span></span></div><span>Discover more of where you are.</span><div className="footer-links"><a href="#about">About</a><a href="#help">Help</a><a href="#privacy">Privacy</a></div></footer>
+      <footer><div className="brand footer-brand"><span className="brand-mark"><Compass size={17} /></span><span>Loca<span className="brand-dot">Life</span></span></div><span>Discover more of where you are.</span><div className="footer-links"><a href="#about">About</a><a href="#help">Help</a><a href="#privacy">Privacy</a></div></footer>
 
       {conciergeOpen && (
         <div className="modal-backdrop" onClick={() => setConciergeOpen(false)}>
