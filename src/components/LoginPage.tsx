@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, Compass, Heart, MessageCircle, ShieldCheck, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Compass, Heart, MessageCircle, Moon, ShieldCheck, Sparkles, Sun, Users } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import type { Role } from '@/types';
 
 const FEATURES = [
@@ -28,6 +29,7 @@ const FEATURES = [
 
 export function LoginPage({ onBack, initialRole = 'traveler' }: { onBack: () => void; initialRole?: Role }) {
   const { signIn, signUp } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [mode, setMode] = useState<'signup' | 'signin'>('signup');
   const [role, setRole] = useState<Role>(initialRole);
   const [name, setName] = useState('');
@@ -50,7 +52,17 @@ export function LoginPage({ onBack, initialRole = 'traveler' }: { onBack: () => 
   return (
     <div className="login-page">
       <div className="login-marketing">
-        <button className="login-back" onClick={onBack} type="button"><ArrowLeft size={15} /> Continue browsing</button>
+        <div className="login-top-row">
+          <button className="login-back" onClick={onBack} type="button"><ArrowLeft size={15} /> Continue browsing</button>
+          <button
+            className="login-theme-toggle"
+            onClick={toggleTheme}
+            type="button"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+        </div>
         <a className="brand login-brand" href="#top"><span className="brand-mark light"><Compass size={19} strokeWidth={2.3} /></span><span>Loca<span className="brand-dot">Life</span></span></a>
 
         <div className="eyebrow light"><span className="eyebrow-line" />WHY LOCALIFE</div>

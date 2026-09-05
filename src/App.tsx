@@ -9,12 +9,15 @@ import {
   MapPin,
   Menu,
   MessageCircle,
+  Moon,
   Search,
   Sparkles,
   Star,
+  Sun,
   X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useTheme } from '@/hooks/useTheme';
 import { useRecommendations, logInteraction } from '@/hooks/useRecommendations';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { parseConciergeQuery } from '@/lib/concierge';
@@ -33,6 +36,7 @@ const TABS = ['All for you', ...INTEREST_TAGS];
 
 function App() {
   const { session, profile, travelerProfile, loading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const [activeInterest, setActiveInterest] = useState('All for you');
   const [view, setView] = useState<View>('home');
@@ -182,6 +186,13 @@ function App() {
           )}
         </nav>
         <div className="header-actions">
+          <button
+            className="icon-button theme-toggle-button"
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={toggleTheme}
+          >
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
           {session && (
             <div className="dropdown-anchor">
               <button
