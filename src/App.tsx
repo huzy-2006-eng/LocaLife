@@ -398,7 +398,7 @@ function App() {
               <div className="ai-insight">
                 <span className="ai-insight-icon"><Sparkles size={14} /></span>
                 <div>
-                  <strong>AI Concierge understood: “{conciergeQuery}”</strong>
+                  <strong>AI Concierge understood: “{conciergeHistory[conciergeHistory.length - 1] ?? ''}”</strong>
                   <p>
                     {conciergeFilters.tags.length > 0 && <>interested in <b>{conciergeFilters.tags.join(', ')}</b></>}
                     {conciergeFilters.tags.length > 0 && (conciergeFilters.time_window || conciergeFilters.budget_max) ? ', ' : ''}
