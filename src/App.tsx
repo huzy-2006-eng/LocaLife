@@ -206,7 +206,7 @@ function App() {
               {profileMenuOpen && (
                 <ProfileMenu
                   onEditPreferences={() => { setEditPreferencesOpen(true); setProfileMenuOpen(false); }}
-                  onClose={() => { setProfileMenuOpen(false); setView('home'); }}
+                  onClose={() => { setProfileMenuOpen(false); setView('login'); }}
                 />
               )}
             </div>
@@ -290,6 +290,11 @@ function App() {
               <>
                 <div className="personal-intro"><span className="personal-avatar">{profile?.name.charAt(0)}</span><div><strong>Good day, {profile?.name}</strong><span>Curated for your {profile?.city} days</span></div></div>
                 <div className="personal-details"><span><span className="detail-label">YOUR TIME</span> {travelerProfile.time_window}</span><span><span className="detail-label">YOUR BUDGET</span> Under ₹{travelerProfile.budget_max}</span></div>
+              </>
+            ) : session ? (
+              <>
+                <div className="personal-intro"><span className="personal-avatar">{profile?.name?.charAt(0) ?? '?'}</span><div><strong>Good day, {profile?.name}</strong><span>Browsing as a host — hosts don't get a personalized feed</span></div></div>
+                <button className="edit-preferences" onClick={() => setView('host')}>Go to Host Studio <ArrowRight size={15} /></button>
               </>
             ) : (
               <>

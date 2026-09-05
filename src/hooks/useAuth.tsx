@@ -78,6 +78,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
+    // Clear local state immediately rather than waiting on the network
+    // round-trip to Supabase's auth server -- signOut() can take a few
+    // seconds, which otherwise makes the button look unresponsive.
+    setSession(null);
+    setProfile(null);
+    setTravelerProfile(null);
+    setHostProfile(null);
     await supabase.auth.signOut();
   }
 
