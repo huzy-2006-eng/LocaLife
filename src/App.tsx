@@ -195,12 +195,6 @@ function App() {
           <Compass size={28} />
           <h2>Backend not configured</h2>
           <p>Copy <code>.env.example</code> to <code>.env</code>, add your Supabase project URL and anon key, then restart <code>npm run dev</code>.</p>
-          {/* TEMPORARY DEBUG — remove once the Vercel env var issue is diagnosed */}
-          <p style={{ marginTop: 20, fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>
-            DEBUG VITE_SUPABASE_URL = "{String(import.meta.env.VITE_SUPABASE_URL)}"<br />
-            DEBUG VITE_SUPABASE_ANON_KEY length = {String(import.meta.env.VITE_SUPABASE_ANON_KEY?.length ?? 'undefined')}<br />
-            DEBUG all VITE_ keys = {Object.keys(import.meta.env).filter((k) => k.startsWith('VITE_')).join(', ') || '(none)'}
-          </p>
         </div>
       </div>
     );
