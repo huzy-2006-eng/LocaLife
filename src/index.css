@@ -232,3 +232,8 @@ footer { max-width: 1240px; margin: 0 auto; border-top: 1px solid #e3e8e1; paddi
 .dropdown-item:hover { color: #d9803f; }
 .dropdown-item.danger:hover { color: #c0472b; }
 .dropdown-item svg { color: #d9803f; }
+.search-location { border: 0; background: none; border-left: 1px solid #e1e8e2; }
+.city-panel { width: 220px; left: 0; right: auto; }
+.city-option { width: 100%; text-align: left; border: 0; background: none; color: #536c68; font-size: 12px; padding: 9px 8px; border-radius: 2px; }
+.city-option:hover { background: #f4f8f2; }
+.city-option.selected { color: #d47d3d; font-weight: 700; }

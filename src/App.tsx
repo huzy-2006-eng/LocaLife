@@ -19,7 +19,7 @@ import { useRecommendations, logInteraction } from '@/hooks/useRecommendations';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 import { parseConciergeQuery } from '@/lib/concierge';
 import { reasonSentence } from '@/lib/reasons';
-import { INTEREST_TAGS, type ConciergeFilters, type ScoredExperience } from '@/types';
+import { CITIES, INTEREST_TAGS, cityOf, type ConciergeFilters, type ScoredExperience } from '@/types';
 import { AuthModal } from '@/components/AuthModal';
 import { Onboarding } from '@/components/Onboarding';
 import { HostDashboard } from '@/components/HostDashboard';
@@ -49,6 +49,8 @@ function App() {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [editPreferencesOpen, setEditPreferencesOpen] = useState(false);
+  const [selectedCity, setSelectedCity] = useState('Ahmedabad');
+  const [cityDropdownOpen, setCityDropdownOpen] = useState(false);
 
   const { experiences, loading: experiencesLoading, refetch } = useRecommendations(session?.user.id);
 
@@ -69,11 +71,12 @@ function App() {
   const filteredExperiences = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     return baseList.filter((experience) => {
+      const matchesCity = selectedCity === 'All cities' || cityOf(experience.location_name) === selectedCity;
       const matchesInterest = activeInterest === 'All for you' || experience.tags.includes(activeInterest);
       const matchesQuery = !normalizedQuery || `${experience.title} ${experience.location_name}`.toLowerCase().includes(normalizedQuery);
-      return matchesInterest && matchesQuery;
+      return matchesCity && matchesInterest && matchesQuery;
     });
-  }, [baseList, activeInterest, query]);
+  }, [baseList, activeInterest, query, selectedCity]);
 
   async function toggleSaved(experience: ScoredExperience) {
     if (!session) {
@@ -201,8 +204,8 @@ function App() {
         </div>
       </header>
 
-      {(notifOpen || profileMenuOpen) && (
-        <div className="dropdown-backdrop" onClick={() => { setNotifOpen(false); setProfileMenuOpen(false); }} />
+      {(notifOpen || profileMenuOpen || cityDropdownOpen) && (
+        <div className="dropdown-backdrop" onClick={() => { setNotifOpen(false); setProfileMenuOpen(false); setCityDropdownOpen(false); }} />
       )}
 
       {view === 'host' && <HostDashboard onBack={() => setView('home')} />}
@@ -228,7 +231,31 @@ function App() {
                   <Search size={19} />
                   <input value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && search()} placeholder="What do you feel like doing?" aria-label="Search experiences" />
                 </div>
-                <div className="search-location"><MapPin size={17} /><span>Ahmedabad</span><ChevronDown size={15} /></div>
+                <div className="dropdown-anchor">
+                  <button type="button" className="search-location" onClick={() => setCityDropdownOpen((o) => !o)}>
+                    <MapPin size={17} /><span>{selectedCity}</span><ChevronDown size={15} />
+                  </button>
+                  {cityDropdownOpen && (
+                    <div className="dropdown-panel city-panel" onClick={(e) => e.stopPropagation()}>
+                      <div className="dropdown-title">Browse a city</div>
+                      <button
+                        className={`city-option ${selectedCity === 'All cities' ? 'selected' : ''}`}
+                        onClick={() => { setSelectedCity('All cities'); setCityDropdownOpen(false); }}
+                      >
+                        All cities
+                      </button>
+                      {CITIES.map((city) => (
+                        <button
+                          key={city.name}
+                          className={`city-option ${selectedCity === city.name ? 'selected' : ''}`}
+                          onClick={() => { setSelectedCity(city.name); setCityDropdownOpen(false); }}
+                        >
+                          {city.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <button className="search-button" onClick={search}>Explore <ArrowRight size={17} /></button>
               </div>
               <div className="suggestions"><span>Try</span><button onClick={() => setQuery('food')}>food tonight</button><button onClick={() => setQuery('workshop')}>a creative workshop</button><button onClick={() => setQuery('hidden gem')}>a hidden gem</button></div>

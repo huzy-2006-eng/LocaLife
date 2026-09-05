@@ -84,3 +84,22 @@ export type ConciergeFilters = {
   time_window: TimeWindow | null;
   mood: string;
 };
+
+// Matches the trailing ", <City>" segment of experiences.location_name.
+// lat/lng are used to re-center proximity scoring on the chosen city.
+export const CITIES: { name: string; lat: number; lng: number }[] = [
+  { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714 },
+  { name: 'Jaipur', lat: 26.9124, lng: 75.7873 },
+  { name: 'Udaipur', lat: 24.5854, lng: 73.7125 },
+  { name: 'Goa', lat: 15.2993, lng: 74.1240 },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+  { name: 'Delhi', lat: 28.7041, lng: 77.1025 },
+  { name: 'Varanasi', lat: 25.3176, lng: 82.9739 },
+  { name: 'Kerala', lat: 9.4981, lng: 76.3388 },
+  { name: 'Rishikesh', lat: 30.0869, lng: 78.2676 },
+];
+
+export function cityOf(locationName: string): string {
+  const parts = locationName.split(',');
+  return parts[parts.length - 1].trim();
+}
