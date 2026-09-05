@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTheme } from '@/hooks/useTheme';
 import { useRecommendations, logInteraction } from '@/hooks/useRecommendations';
 import { supabase, isSupabaseConfigured } from '@/lib/supabase';
-import { parseConciergeQuery } from '@/lib/concierge';
+import { isConciergeLLMConfigured, parseConciergeQuery } from '@/lib/concierge';
 import { reasonSentence } from '@/lib/reasons';
 import { CITIES, INTEREST_TAGS, cityOf, type ConciergeFilters, type Role, type ScoredExperience } from '@/types';
 import { Onboarding } from '@/components/Onboarding';
@@ -321,9 +321,27 @@ function App() {
           <section className="discover-section" id="discover">
             <div className="section-heading"><div><div className="eyebrow compact"><span className="eyebrow-line" />DISCOVER NEARBY</div><h2>Made for <em>your kind</em> of curious.</h2></div><button className="text-button" onClick={() => { setActiveInterest('All for you'); setQuery(''); }}>See all experiences <ArrowRight size={16} /></button></div>
             <div className="interest-tabs" role="tablist">{TABS.map((interest) => <button key={interest} className={activeInterest === interest ? 'selected' : ''} onClick={() => setActiveInterest(interest)} role="tab" aria-selected={activeInterest === interest}>{interest}{interest === 'All for you' && <Sparkles size={14} />}</button>)}</div>
-            {hasSearched && (
+            {hasSearched && conciergeFilters && (
+              <div className="ai-insight">
+                <span className="ai-insight-icon"><Sparkles size={14} /></span>
+                <div>
+                  <strong>AI Concierge understood: “{conciergeQuery}”</strong>
+                  <p>
+                    {conciergeFilters.tags.length > 0 && <>interested in <b>{conciergeFilters.tags.join(', ')}</b></>}
+                    {conciergeFilters.tags.length > 0 && (conciergeFilters.time_window || conciergeFilters.budget_max) ? ', ' : ''}
+                    {conciergeFilters.time_window && <>in the <b>{conciergeFilters.time_window}</b></>}
+                    {conciergeFilters.time_window && conciergeFilters.budget_max ? ', ' : ''}
+                    {conciergeFilters.budget_max && <>under <b>₹{conciergeFilters.budget_max}</b></>}
+                    {!conciergeFilters.tags.length && !conciergeFilters.time_window && !conciergeFilters.budget_max && 'open to anything'}
+                    {' '}— mood: <b>{conciergeFilters.mood}</b>
+                  </p>
+                </div>
+                <button className="ai-insight-clear" onClick={() => { setQuery(''); setHasSearched(false); clearConcierge(); }}><X size={14} /></button>
+              </div>
+            )}
+            {hasSearched && !conciergeFilters && (
               <div className="result-message">
-                {conciergeFilters ? <>Concierge picks for “{conciergeQuery}” — mood: {conciergeFilters.mood}</> : <>Showing experiences {query ? `matching "${query}"` : 'for you'}</>}
+                Showing experiences {query ? `matching "${query}"` : 'for you'}
                 <button onClick={() => { setQuery(''); setHasSearched(false); clearConcierge(); }}><X size={14} /> Clear</button>
               </div>
             )}
@@ -360,11 +378,12 @@ function App() {
             <button className="modal-close" onClick={() => setConciergeOpen(false)} aria-label="Close Concierge"><X size={19} /></button>
             <div className="modal-spark"><Sparkles size={23} /></div>
             <div className="eyebrow compact"><span className="eyebrow-line" />LOCAL CONCIERGE</div>
+            {isConciergeLLMConfigured && <div className="ai-badge"><Sparkles size={11} /> AI-powered — real-time language understanding, not keyword search</div>}
             <h2>What kind of day<br /><em>are you dreaming of?</em></h2>
             <p>Ask for anything — we'll keep it personal, nearby, and easy to love.</p>
             <textarea value={conciergeQuery} onChange={(event) => setConciergeQuery(event.target.value)} placeholder="Something fun after work, not too expensive..." autoFocus />
             <button className="modal-submit" onClick={runConcierge} disabled={!conciergeQuery.trim() || conciergeBusy}>
-              {conciergeBusy ? 'Thinking...' : 'Find my day'} <ArrowRight size={17} />
+              {conciergeBusy ? 'Asking the AI...' : 'Find my day'} <ArrowRight size={17} />
             </button>
             <div className="modal-prompts"><span>Try asking</span><button onClick={() => setConciergeQuery('Something cheap and fun tonight near me')}>cheap and fun tonight</button><button onClick={() => setConciergeQuery('A quiet creative workshop this afternoon')}>quiet creative workshop</button></div>
           </div>
