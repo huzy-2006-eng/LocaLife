@@ -374,3 +374,11 @@ footer { max-width: 1240px; margin: 0 auto; border-top: 1px solid var(--border);
 .ai-insight p b { color: var(--accent-text); font-weight: 700; }
 .ai-insight-clear { flex: none; border: 0; background: none; color: var(--text-body); margin-left: auto; }
 .ai-insight-clear:hover { color: var(--accent-text); }
+
+.concierge-thread { max-height: 200px; overflow-y: auto; margin: 20px 0; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.concierge-turn { display: flex; flex-direction: column; gap: 6px; }
+.concierge-turn-user { align-self: flex-end; max-width: 85%; background: var(--accent); color: #fff; font-size: 12px; line-height: 1.4; padding: 9px 13px; border-radius: 14px 14px 2px 14px; }
+.concierge-turn-ai { display: flex; align-items: flex-start; gap: 6px; max-width: 90%; background: var(--surface-soft); color: var(--text-body); font-size: 11px; line-height: 1.5; padding: 9px 13px; border-radius: 14px 14px 14px 2px; }
+.concierge-turn-ai svg { flex: none; margin-top: 2px; color: var(--accent-text); }
+.concierge-start-over { display: block; width: 100%; text-align: center; border: 0; background: none; color: var(--text-body); font-size: 11px; margin-top: 16px; text-decoration: underline; text-underline-offset: 3px; }
+.concierge-start-over:hover { color: var(--accent-text); }

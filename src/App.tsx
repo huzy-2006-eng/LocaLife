@@ -34,6 +34,19 @@ type View = 'home' | 'saved' | 'host' | 'login';
 
 const TABS = ['All for you', ...INTEREST_TAGS];
 
+// The scoring function never hard-filters — it soft-scores every listing
+// and re-ranks (a listing outside your budget just scores lower, it isn't
+// removed) — so this deliberately doesn't claim a "match count", which
+// would misleadingly stay constant across refinements.
+function summarizeFilters(filters: ConciergeFilters): string {
+  const parts: string[] = [];
+  if (filters.tags.length) parts.push(filters.tags.join(', '));
+  if (filters.time_window) parts.push(filters.time_window);
+  if (filters.budget_max) parts.push(`under ₹${filters.budget_max}`);
+  const summary = parts.length ? parts.join(', ') : filters.mood;
+  return `Got it — re-ranked for ${summary}.`;
+}
+
 function App() {
   const { session, profile, travelerProfile, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -49,6 +62,8 @@ function App() {
   const [conciergeQuery, setConciergeQuery] = useState('');
   const [conciergeFilters, setConciergeFilters] = useState<ConciergeFilters | null>(null);
   const [conciergeResults, setConciergeResults] = useState<ScoredExperience[] | null>(null);
+  const [conciergeHistory, setConciergeHistory] = useState<string[]>([]);
+  const [conciergeTurns, setConciergeTurns] = useState<{ query: string; filters: ConciergeFilters }[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [loginInitialRole, setLoginInitialRole] = useState<Role>('traveler');
   const [notifOpen, setNotifOpen] = useState(false);
@@ -116,8 +131,12 @@ function App() {
   }
 
   async function runConcierge() {
+    const message = conciergeQuery.trim();
+    if (!message) return;
     setConciergeBusy(true);
-    const filters = await parseConciergeQuery(conciergeQuery);
+    const newHistory = [...conciergeHistory, message];
+    setConciergeHistory(newHistory);
+    const filters = await parseConciergeQuery(newHistory);
     setConciergeFilters(filters);
     const { data } = await supabase.rpc('get_recommendations', {
       p_user_id: session?.user.id ?? null,
@@ -126,9 +145,11 @@ function App() {
       p_time_window: filters.time_window,
       p_limit: 50,
     });
-    setConciergeResults((data ?? []) as ScoredExperience[]);
+    const results = (data ?? []) as ScoredExperience[];
+    setConciergeResults(results);
+    setConciergeTurns((prev) => [...prev, { query: message, filters }]);
     setConciergeBusy(false);
-    setConciergeOpen(false);
+    setConciergeQuery('');
     setHasSearched(true);
     setActiveInterest('All for you');
     setQuery('');
@@ -138,6 +159,8 @@ function App() {
   function clearConcierge() {
     setConciergeResults(null);
     setConciergeFilters(null);
+    setConciergeHistory([]);
+    setConciergeTurns([]);
     setHasSearched(false);
   }
 
@@ -380,12 +403,34 @@ function App() {
             <div className="eyebrow compact"><span className="eyebrow-line" />LOCAL CONCIERGE</div>
             {isConciergeLLMConfigured && <div className="ai-badge"><Sparkles size={11} /> AI-powered — real-time language understanding, not keyword search</div>}
             <h2>What kind of day<br /><em>are you dreaming of?</em></h2>
-            <p>Ask for anything — we'll keep it personal, nearby, and easy to love.</p>
-            <textarea value={conciergeQuery} onChange={(event) => setConciergeQuery(event.target.value)} placeholder="Something fun after work, not too expensive..." autoFocus />
+            <p>Ask for anything — we'll keep it personal, nearby, and easy to love. Keep chatting to refine it.</p>
+
+            {conciergeTurns.length > 0 && (
+              <div className="concierge-thread">
+                {conciergeTurns.map((turn, i) => (
+                  <div className="concierge-turn" key={i}>
+                    <div className="concierge-turn-user">{turn.query}</div>
+                    <div className="concierge-turn-ai"><Sparkles size={12} /> {summarizeFilters(turn.filters)}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <textarea
+              value={conciergeQuery}
+              onChange={(event) => setConciergeQuery(event.target.value)}
+              placeholder={conciergeTurns.length ? 'Refine it further — "actually cheaper", "make it evening"...' : 'Something fun after work, not too expensive...'}
+              onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); runConcierge(); } }}
+              autoFocus
+            />
             <button className="modal-submit" onClick={runConcierge} disabled={!conciergeQuery.trim() || conciergeBusy}>
-              {conciergeBusy ? 'Asking the AI...' : 'Find my day'} <ArrowRight size={17} />
+              {conciergeBusy ? 'Asking the AI...' : conciergeTurns.length ? 'Refine' : 'Find my day'} <ArrowRight size={17} />
             </button>
-            <div className="modal-prompts"><span>Try asking</span><button onClick={() => setConciergeQuery('Something cheap and fun tonight near me')}>cheap and fun tonight</button><button onClick={() => setConciergeQuery('A quiet creative workshop this afternoon')}>quiet creative workshop</button></div>
+            {conciergeTurns.length === 0 ? (
+              <div className="modal-prompts"><span>Try asking</span><button onClick={() => setConciergeQuery('Something cheap and fun tonight near me')}>cheap and fun tonight</button><button onClick={() => setConciergeQuery('A quiet creative workshop this afternoon')}>quiet creative workshop</button></div>
+            ) : (
+              <button className="concierge-start-over" onClick={clearConcierge} type="button">Start a new search</button>
+            )}
           </div>
         </div>
       )}

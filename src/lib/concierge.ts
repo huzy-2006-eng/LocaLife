@@ -1,38 +1,47 @@
 import { INTEREST_TAGS, type ConciergeFilters, type TimeWindow } from '@/types';
 
-// Turns a free-text request ("under 1000, this evening, something creative")
-// into the structured {tags, budget_max, time_window} filter object that
-// get_recommendations() consumes — PS6 brief §5, Step 2. The LLM here only
-// ever produces this filter object; it never sees or reorders the actual
-// results, so the ranking stays deterministic and explainable regardless of
-// what the model returns. If no Groq key is configured, or the call fails
-// for any reason (network, rate limit, malformed response), this falls back
-// to a local keyword parser so the concierge never just breaks.
+// Turns a free-text conversation ("under 1000, this evening, something
+// creative" -> "actually make it cheaper") into the structured
+// {tags, budget_max, time_window} filter object that get_recommendations()
+// consumes — PS6 brief §5, Step 2. The LLM here only ever produces this
+// filter object; it never sees or reorders the actual results, so the
+// ranking stays deterministic and explainable regardless of what the model
+// returns. If no Groq key is configured, or the call fails for any reason
+// (network, rate limit, malformed response), this falls back to a local
+// keyword parser so the concierge never just breaks.
+//
+// `history` is every message the traveler has sent in this conversation so
+// far, oldest first, including the newest one. Later messages refine or
+// override earlier ones (e.g. "actually cheaper" keeps everything else the
+// same but lowers the budget) rather than starting a fresh, unrelated query.
 
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
 export const isConciergeLLMConfigured = Boolean(GROQ_API_KEY);
 
-export async function parseConciergeQuery(query: string): Promise<ConciergeFilters> {
+export async function parseConciergeQuery(history: string[]): Promise<ConciergeFilters> {
   if (GROQ_API_KEY) {
     try {
-      const result = await parseWithGroq(query, GROQ_API_KEY);
+      const result = await parseWithGroq(history, GROQ_API_KEY);
       if (result) return result;
     } catch (err) {
       console.warn('[concierge] Groq call failed, falling back to keyword parser:', err);
     }
   }
-  return parseWithHeuristics(query);
+  return parseWithHeuristics(history);
 }
 
-async function parseWithGroq(query: string, apiKey: string): Promise<ConciergeFilters | null> {
-  const systemPrompt = `You extract structured search filters from a traveler's free-text request for a local-experiences app. Respond with ONLY a JSON object, no other text, matching exactly this shape:
+async function parseWithGroq(history: string[], apiKey: string): Promise<ConciergeFilters | null> {
+  const systemPrompt = `You extract structured search filters from a traveler's ongoing conversation with a local-experiences app's concierge. Respond with ONLY a JSON object, no other text, matching exactly this shape:
 {"tags": string[], "budget_max": number | null, "time_window": "morning" | "afternoon" | "evening" | "night" | null, "mood": string}
 
 Rules:
 - "tags" must only contain values from this exact list: ${INTEREST_TAGS.join(', ')}. Include every tag that plausibly matches the request. Empty array if none clearly apply.
 - "budget_max" is the highest price (in rupees) the traveler mentioned, or null if no budget was stated.
 - "time_window" must be exactly one of "morning", "afternoon", "evening", "night", or null if unstated — never any other word. Map "tonight"/"late" to "night". Infer it from context even if not explicitly a filter (e.g. "a romantic evening" implies "evening").
-- "mood" is a short (2-4 word) description of the vibe they're after, e.g. "quiet and relaxed" or "cheap and fun".`;
+- "mood" is a short (2-4 word) description of the vibe they're after, e.g. "quiet and relaxed" or "cheap and fun".
+- The conversation may have multiple messages. Later messages refine or override earlier ones rather than replacing the whole request — e.g. if message 1 said "under 1000" and message 2 says "actually make it fancier, up to 2000", the current budget_max is 2000, but tags/mood from message 1 still apply unless message 2 contradicts them. Return the CURRENT combined understanding of the whole conversation, not just the latest message in isolation.`;
+
+  const conversationText = history.map((msg, i) => `${i + 1}. "${msg}"`).join('\n');
 
   const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
@@ -44,7 +53,7 @@ Rules:
       model: 'openai/gpt-oss-20b',
       messages: [
         { role: 'system', content: systemPrompt },
-        { role: 'user', content: query },
+        { role: 'user', content: `Conversation so far, oldest first:\n${conversationText}` },
       ],
       response_format: { type: 'json_object' },
       // gpt-oss models reason before answering; "low" keeps that brief so
@@ -52,7 +61,7 @@ Rules:
       // small, while still reasoning enough to catch implied context.
       reasoning_effort: 'low',
       temperature: 0.2,
-      max_tokens: 300,
+      max_tokens: 350,
     }),
   });
 
@@ -76,7 +85,7 @@ Rules:
   return { tags, budget_max, time_window, mood };
 }
 
-function parseWithHeuristics(query: string): ConciergeFilters {
+function parseSingleHeuristic(query: string): ConciergeFilters {
   const text = query.toLowerCase();
 
   const tags = INTEREST_TAGS.filter((tag) => {
@@ -106,4 +115,24 @@ function parseWithHeuristics(query: string): ConciergeFilters {
   const mood = moodWords ? Array.from(new Set(moodWords)).join(', ') : 'open to anything';
 
   return { tags, budget_max, time_window, mood };
+}
+
+// Fallback path merges each turn in order so a later message's budget/time
+// override earlier ones, and tags/moods accumulate — a rough approximation
+// of the same "refine, don't replace" behavior the LLM prompt asks for.
+function parseWithHeuristics(history: string[]): ConciergeFilters {
+  let tags: string[] = [];
+  let budget_max: number | null = null;
+  let time_window: TimeWindow | null = null;
+  const moods: string[] = [];
+
+  for (const query of history) {
+    const single = parseSingleHeuristic(query);
+    tags = Array.from(new Set([...tags, ...single.tags]));
+    if (single.budget_max !== null) budget_max = single.budget_max;
+    if (single.time_window !== null) time_window = single.time_window;
+    if (single.mood !== 'open to anything') moods.push(...single.mood.split(', '));
+  }
+
+  return { tags, budget_max, time_window, mood: moods.length ? Array.from(new Set(moods)).join(', ') : 'open to anything' };
 }
