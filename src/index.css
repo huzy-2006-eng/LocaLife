@@ -211,3 +211,24 @@ footer { max-width: 1240px; margin: 0 auto; border-top: 1px solid #e3e8e1; paddi
 .listing-textarea { height: 80px; resize: vertical; }
 .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .form-grid-2 label, .auth-form > label { display: flex; flex-direction: column; gap: 6px; font-size: 10px; color: #99aaa5; font-family: 'DM Mono', monospace; letter-spacing: .5px; }
+
+.dropdown-anchor { position: relative; }
+.dropdown-backdrop { position: fixed; inset: 0; z-index: 15; background: transparent; }
+.dropdown-panel { position: absolute; top: calc(100% + 12px); right: 0; z-index: 16; width: 300px; background: #fff; box-shadow: 0 18px 45px rgba(4, 35, 31, .18); border: 1px solid #edf0eb; padding: 16px; }
+.dropdown-title { font-size: 11px; font-weight: 700; color: #155c58; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 10px; }
+.dropdown-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #99aaa5; font-size: 11px; text-align: center; padding: 20px 8px; }
+.dropdown-empty svg { color: #d9803f; }
+.notification-row { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid #f2f4ef; }
+.notification-row:first-of-type { border-top: 0; }
+.notification-icon { width: 26px; height: 26px; flex: none; border-radius: 50%; background: #e6f0e9; color: #0a756d; display: grid; place-items: center; }
+.notification-row p { font-size: 12px; color: #345953; margin: 0; line-height: 1.4; }
+.notification-row span { font-size: 10px; color: #99aaa5; }
+.dropdown-close { width: 100%; margin-top: 10px; border: 1px solid #dce7e0; background: #fff; color: #67817b; font-size: 11px; font-weight: 600; padding: 9px; }
+.profile-panel-header { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 6px; border-bottom: 1px solid #f2f4ef; }
+.profile-panel-header .avatar { width: 36px; height: 36px; font-size: 14px; }
+.profile-panel-header strong { display: block; color: #224c47; font-size: 13px; }
+.profile-panel-header span { display: block; color: #99aaa5; font-size: 10px; margin-top: 2px; }
+.dropdown-item { width: 100%; display: flex; align-items: center; gap: 9px; border: 0; background: none; color: #345953; font-size: 12px; font-weight: 600; padding: 10px 4px; text-align: left; }
+.dropdown-item:hover { color: #d9803f; }
+.dropdown-item.danger:hover { color: #c0472b; }
+.dropdown-item svg { color: #d9803f; }

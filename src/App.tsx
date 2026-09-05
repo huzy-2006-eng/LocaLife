@@ -6,7 +6,6 @@ import {
   Bookmark,
   ChevronDown,
   Compass,
-  LogOut,
   MapPin,
   Menu,
   MessageCircle,
@@ -25,13 +24,15 @@ import { AuthModal } from '@/components/AuthModal';
 import { Onboarding } from '@/components/Onboarding';
 import { HostDashboard } from '@/components/HostDashboard';
 import { LocalImpactMeter } from '@/components/LocalImpactMeter';
+import { NotificationsMenu } from '@/components/NotificationsMenu';
+import { ProfileMenu } from '@/components/ProfileMenu';
 
 type View = 'home' | 'saved' | 'host';
 
 const TABS = ['All for you', ...INTEREST_TAGS];
 
 function App() {
-  const { session, profile, travelerProfile, loading, signOut } = useAuth();
+  const { session, profile, travelerProfile, loading } = useAuth();
 
   const [activeInterest, setActiveInterest] = useState('All for you');
   const [view, setView] = useState<View>('home');
@@ -45,6 +46,9 @@ function App() {
   const [conciergeResults, setConciergeResults] = useState<ScoredExperience[] | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [editPreferencesOpen, setEditPreferencesOpen] = useState(false);
 
   const { experiences, loading: experiencesLoading, refetch } = useRecommendations(session?.user.id);
 
@@ -160,14 +164,34 @@ function App() {
           )}
         </nav>
         <div className="header-actions">
-          <button className="icon-button notification-button" aria-label="Notifications"><Bell size={18} /><span /></button>
+          {session && (
+            <div className="dropdown-anchor">
+              <button
+                className="icon-button notification-button"
+                aria-label="Notifications"
+                onClick={() => { setNotifOpen((o) => !o); setProfileMenuOpen(false); }}
+              >
+                <Bell size={18} /><span />
+              </button>
+              {notifOpen && <NotificationsMenu onClose={() => setNotifOpen(false)} />}
+            </div>
+          )}
           {session ? (
-            <>
-              <button className="profile-button" aria-label="Open profile" onClick={() => setView('home')}>
+            <div className="dropdown-anchor">
+              <button
+                className="profile-button"
+                aria-label="Open profile"
+                onClick={() => { setProfileMenuOpen((o) => !o); setNotifOpen(false); }}
+              >
                 <span className="avatar">{profile?.name?.charAt(0) ?? '?'}</span><ChevronDown size={15} />
               </button>
-              <button className="icon-button" aria-label="Sign out" onClick={() => { signOut(); setView('home'); }}><LogOut size={16} /></button>
-            </>
+              {profileMenuOpen && (
+                <ProfileMenu
+                  onEditPreferences={() => { setEditPreferencesOpen(true); setProfileMenuOpen(false); }}
+                  onClose={() => { setProfileMenuOpen(false); setView('home'); }}
+                />
+              )}
+            </div>
           ) : (
             <button className="sign-in-button" onClick={() => setAuthModalOpen(true)}>Sign in</button>
           )}
@@ -176,6 +200,10 @@ function App() {
           </button>
         </div>
       </header>
+
+      {(notifOpen || profileMenuOpen) && (
+        <div className="dropdown-backdrop" onClick={() => { setNotifOpen(false); setProfileMenuOpen(false); }} />
+      )}
 
       {view === 'host' && <HostDashboard onBack={() => setView('home')} />}
 
@@ -295,6 +323,21 @@ function App() {
       )}
 
       {authModalOpen && <AuthModal onClose={() => { setAuthModalOpen(false); refetch(); }} />}
+
+      {editPreferencesOpen && travelerProfile && (
+        <div className="modal-backdrop" onClick={() => setEditPreferencesOpen(false)}>
+          <div onClick={(e) => e.stopPropagation()}>
+            <Onboarding
+              initial={{
+                interest_tags: travelerProfile.interest_tags,
+                budget_max: travelerProfile.budget_max,
+                time_window: travelerProfile.time_window,
+              }}
+              onDone={() => { setEditPreferencesOpen(false); refetch(); }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -5,11 +5,16 @@ import { INTEREST_TAGS, TIME_WINDOWS, type TimeWindow } from '@/types';
 
 const AHMEDABAD = { lat: 23.0225, lng: 72.5714 };
 
-export function Onboarding() {
+type OnboardingProps = {
+  initial?: { interest_tags?: string[]; budget_max?: number; time_window?: TimeWindow };
+  onDone?: () => void;
+};
+
+export function Onboarding({ initial, onDone }: OnboardingProps = {}) {
   const { saveTravelerProfile } = useAuth();
-  const [tags, setTags] = useState<string[]>([]);
-  const [budgetMax, setBudgetMax] = useState(1500);
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>('evening');
+  const [tags, setTags] = useState<string[]>(initial?.interest_tags ?? []);
+  const [budgetMax, setBudgetMax] = useState(initial?.budget_max ?? 1500);
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>(initial?.time_window ?? 'evening');
   const [busy, setBusy] = useState(false);
 
   function toggleTag(tag: string) {
@@ -27,6 +32,7 @@ export function Onboarding() {
       lng: AHMEDABAD.lng,
     });
     setBusy(false);
+    onDone?.();
   }
 
   return (
@@ -62,7 +68,7 @@ export function Onboarding() {
         </div>
 
         <button className="modal-submit onboarding-submit" onClick={finish} disabled={busy || tags.length === 0}>
-          {busy ? 'Setting up...' : 'Show me my feed'} <ArrowRight size={17} />
+          {busy ? 'Saving...' : initial ? 'Save preferences' : 'Show me my feed'} <ArrowRight size={17} />
         </button>
         {tags.length === 0 && <p className="onboarding-hint">Pick at least one interest to continue.</p>}
       </div>
